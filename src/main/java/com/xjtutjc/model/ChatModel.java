@@ -1,10 +1,13 @@
 package com.xjtutjc.model;
 
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.common.Message;
+import com.xjtutjc.context.ChatContext;
 import io.reactivex.Flowable;
 
-public interface ChatModel {
-    public String chat(String msg);
+import java.util.List;
 
-    public Flowable<GenerationResult> streamChat(String msg);
+public interface ChatModel {
+
+    public Flowable<GenerationResult> streamChat(ChatContext context);
 }
