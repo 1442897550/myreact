@@ -97,26 +97,26 @@ public class ChatController {
             }
             //拿到第一个返回
 
-//            Maybe<GenerationResult> generationResultMaybe = generationResultFlowable.firstElement();
-//            GenerationResult generationResult = generationResultMaybe.blockingGet();
-//            GenerationOutput.Choice firstChoice = generationResult.getOutput().getChoices().get(0);
-//            Message firstMessage = firstChoice.getMessage();
-//            while (!CollectionUtils.isEmpty(firstMessage.getToolCalls())){
-//                ToolCallBase toolCall = firstMessage.getToolCalls().get(0);
-//                ToolCallFunction functionCall = (ToolCallFunction) toolCall;
-//                String funcName = functionCall.getFunction().getName();
-//                String arguments = functionCall.getFunction().getArguments();
-//                System.out.println("正在调用工具 [" + funcName + "]，参数：" + arguments);
-//                String weather = weatherTool.getWeather(arguments);
-//                Message toolMessage = Message.builder()
-//                        .role("tool")
-//                        .toolCallId(toolCall.getId())
-//                        .content(weather)
-//                        .build();
-//                System.out.println("工具返回：" + toolMessage.getContent());
-//                chatContext.getMessages().add(toolMessage);
-//                generationResultFlowable = chatModel.streamChat(chatContext);
-//            }
+            Maybe<GenerationResult> generationResultMaybe = generationResultFlowable.firstElement();
+            GenerationResult generationResult = generationResultMaybe.blockingGet();
+            GenerationOutput.Choice firstChoice = generationResult.getOutput().getChoices().get(0);
+            Message firstMessage = firstChoice.getMessage();
+            while (!CollectionUtils.isEmpty(firstMessage.getToolCalls())){
+                ToolCallBase toolCall = firstMessage.getToolCalls().get(0);
+                ToolCallFunction functionCall = (ToolCallFunction) toolCall;
+                String funcName = functionCall.getFunction().getName();
+                String arguments = functionCall.getFunction().getArguments();
+                System.out.println("正在调用工具 [" + funcName + "]，参数：" + arguments);
+                String weather = weatherTool.getWeather(arguments);
+                Message toolMessage = Message.builder()
+                        .role("tool")
+                        .toolCallId(toolCall.getId())
+                        .content(weather)
+                        .build();
+                System.out.println("工具返回：" + toolMessage.getContent());
+                chatContext.getMessages().add(toolMessage);
+                generationResultFlowable = chatModel.streamChat(chatContext);
+            }
             generationResultFlowable.subscribe(message -> {
                 GenerationOutput.Choice choice = message.getOutput().getChoices().get(0);
                 Message realMessage = choice.getMessage();
