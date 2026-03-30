@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>对话 — Chat API</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --user-bg: #2563eb;
+      --assistant-bg: #243447;
+      --accent: #38bdf8;
+      --error: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      letter-spacing: -0.02em;
+    }
+    .panel {
+      width: 100%;
+      max-width: 640px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .panel label {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .panel input[type="text"] {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    .panel input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      line-height: 1.45;
+    }
+
+    #messages {
+      width: 100%;
+      max-width: 640px;
+      flex: 1;
+      min-height: 280px;
+      max-height: min(56vh, 480px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0.25rem 0.15rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .msg {
+      max-width: 88%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--user-bg);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.assistant {
+      align-self: flex-start;
+      background: var(--assistant-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .msg.meta {
+      align-self: center;
+      max-width: 100%;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      padding: 0.25rem;
+    }
+    .msg.error {
+      align-self: center;
+      max-width: 100%;
+      color: var(--error);
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
+
+    /* Markdown rendering */
+    .msg.assistant a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .msg.assistant a:hover {
+      text-decoration: underline;
+    }
+    .msg.assistant pre {
+      background: rgba(12, 18, 30, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 0.95rem;
+      overflow-x: auto;
+      margin: 0.25rem 0;
+    }
+    .msg.assistant code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .msg.assistant blockquote {
+      margin: 0.25rem 0;
+      padding: 0.25rem 0.75rem;
+      border-left: 3px solid var(--border);
+      color: var(--muted);
+      background: rgba(45, 58, 77, 0.18);
+      border-radius: 8px;
+    }
+    .msg.assistant ul, .msg.assistant ol {
+      margin: 0.25rem 0 0.25rem 1.15rem;
+      padding: 0;
+    }
+    .msg.assistant li {
+      margin: 0.15rem 0;
+    }
+    .msg.assistant h1, .msg.assistant h2, .msg.assistant h3, .msg.assistant h4, .msg.assistant h5, .msg.assistant h6 {
+      margin: 0.35rem 0 0.25rem;
+      line-height: 1.2;
+    }
+
+    .msg.assistant table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.25rem 0;
+    }
+    .msg.assistant th,
+    .msg.assistant td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.65rem;
+    }
+    .msg.assistant th {
+      background: rgba(45, 58, 77, 0.25);
+      text-align: left;
+    }
+    .msg.assistant hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0.75rem 0;
+    }
+
+    /* Task list (GFM) */
+    .msg.assistant input[type="checkbox"] {
+      transform: translateY(1px);
+      margin: 0 0.35rem 0 0;
+    }
+
+    .msg.assistant del {
+      color: #aeb6c3;
+      text-decoration: line-through;
+    }
+
+    .composer {
+      width: 100%;
+      max-width: 640px;
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    .composer textarea {
+      flex: 1;
+      min-height: 44px;
+      max-height: 160px;
+      resize: vertical;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      line-height: 1.45;
+    }
+    .composer textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .composer button {
+      padding: 0.65rem 1.1rem;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .composer button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .composer button:not(:disabled):hover {
+      filter: brightness(1.08);
+    }
+  </style>
+  <!-- Markdown renderer (更完整覆盖) - CDN 中国镜像版 -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/marked/16.3.0/marked.min.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/dompurify/3.2.7/purify.min.js"></script>
+  <script>
+    // If CDN is slow/blocked, fallback will be used by renderMarkdown()
+    window.__mdReady = !!window.marked;
+  </script>
+</head>
+<body>
+  <h1>对话</h1>
+
+  <div class="panel">
+    <label for="apiBase">API 基础地址（留空则使用当前页面同源）</label>
+    <input id="apiBase" type="text" placeholder="例如 http://localhost:8080" autocomplete="off" />
+    <p class="hint">
+      对应后端 <code>ChatController</code>：<code>POST /api/chat/stream</code>（流式 SSE），请求体 JSON 字段
+      <code>question</code>（必填）、<code>id</code>（可选）。请将本文件放在
+      <code>src/main/resources/static/</code> 下，启动应用后访问
+      <code>http://localhost:8080/chat.html</code> 以避免跨域问题。
+    </p>
+  </div>
+
+  <div id="messages" aria-live="polite"></div>
+
+  <div class="composer">
+    <textarea id="input" rows="2" placeholder="输入问题，Enter 发送（Shift+Enter 换行）"></textarea>
+    <button type="button" id="send">发送</button>
+  </div>
+
+  <script>
+    (function () {
+      var apiBaseEl = document.getElementById('apiBase');
+      var messagesEl = document.getElementById('messages');
+      var inputEl = document.getElementById('input');
+      var sendBtn = document.getElementById('send');
+
+      var sessionId = 'web-' + Math.random().toString(36).slice(2, 12);
+
+      function apiUrl(path) {
+        var base = (apiBaseEl.value || '').trim().replace(/\/$/, '');
+        if (!base) return path;
+        return base + path;
+      }
+
+      function appendMessage(role, text, className) {
+        var div = document.createElement('div');
+        div.className = 'msg ' + (className || role);
+        div.textContent = text;
+        messagesEl.appendChild(div);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function appendError(text) {
+        appendMessage('', text, 'error');
+      }
+
+      function setLoading(loading) {
+        sendBtn.disabled = loading;
+        inputEl.disabled = loading;
+      }
+
+      async function sendChat() {
+        var q = inputEl.value.trim();
+        if (!q) return;
+
+        appendMessage('user', q);
+        inputEl.value = '';
+
+        // 创建一个“助手消息”容器，后续把流式内容逐段追加进去
+        var assistantDiv = document.createElement('div');
+        assistantDiv.className = 'msg assistant';
+        // 后端还没返回内容时，先显示“思考中”
+        assistantDiv.textContent = '思考中…';
+        messagesEl.appendChild(assistantDiv);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        setLoading(true);
+
+        try {
+          var res = await fetch(apiUrl('/api/chat/stream'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: sessionId,
+              question: q
+            })
+          });
+
+          if (!res.ok) {
+            var errText = '';
+            try { errText = await res.text(); } catch (e) {}
+            appendError('请求失败 HTTP ' + res.status + (errText ? '：' + errText : ''));
+            return;
+          }
+
+          if (!res.body) {
+            appendError('浏览器不支持流式读取（res.body 为空）');
+            return;
+          }
+
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder('utf-8');
+          var buffer = '';
+          var hasReceivedFirstContent = false;
+          var assistantRaw = '';
+
+          function appendAssistantChunk(chunk) {
+            if (chunk == null) return;
+            // 收到第一段内容后，清除“思考中”占位
+            if (!hasReceivedFirstContent) {
+              hasReceivedFirstContent = true;
+              assistantRaw = '';
+              assistantDiv.textContent = '';
+            }
+            assistantRaw += String(chunk);
+            assistantDiv.innerHTML = renderMarkdown(assistantRaw);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+          }
+
+          function handleSseData(dataStr) {
+            if (!dataStr) return;
+
+            // 后端发的是 JSON：{ type: "content"|"error"|"done", data: "..." }
+            var payload = null;
+            try { payload = JSON.parse(dataStr); } catch (e) {}
+
+            if (payload && payload.type === 'content' && typeof payload.data === 'string') {
+              appendAssistantChunk(payload.data);
+              return;
+            }
+
+            if (payload && payload.type === 'error') {
+              // 出错时不再显示“思考中”占位
+              if (!hasReceivedFirstContent) assistantDiv.textContent = '';
+              appendError(payload.data || '流式对话报错');
+              return;
+            }
+
+            if (payload && payload.type === 'done') {
+              // 若整个过程没有收到任何 content，则替换“思考中”
+              if (!hasReceivedFirstContent) assistantDiv.textContent = '未返回任何回复内容';
+              return;
+            }
+
+            // 容错：如果不是 JSON，就当做纯文本块追加
+            appendAssistantChunk(dataStr);
+          }
+
+          function drainSseBuffer() {
+            // SSE 事件之间通常用空行分隔（\n\n），处理不完整尾巴留在 buffer
+            var parts = buffer.split(/\r?\n\r?\n/);
+            buffer = parts.pop() || '';
+
+            for (var i = 0; i < parts.length; i++) {
+              var evtText = parts[i];
+              if (!evtText || !evtText.trim()) continue;
+
+              var lines = evtText.split(/\r?\n/);
+              var dataLines = [];
+
+              for (var j = 0; j < lines.length; j++) {
+                var line = lines[j];
+                // 仅解析 data: 行（Spring 的 SseEmitter 会把完整 JSON 放在 data 中）
+                if (line.indexOf('data:') === 0) {
+                  dataLines.push(line.slice(5).trim());
+                }
+              }
+
+              var dataStr = dataLines.join('\n');
+              handleSseData(dataStr);
+            }
+          }
+
+          while (true) {
+            var readResult = await reader.read();
+            if (readResult.done) break;
+
+            buffer += decoder.decode(readResult.value, { stream: true });
+            drainSseBuffer();
+          }
+
+          // 处理剩余未被 \n\n 分隔的最后一段
+          if (buffer.trim()) drainSseBuffer();
+
+          if (!hasReceivedFirstContent && assistantDiv.textContent === '思考中…') {
+            assistantDiv.textContent = '未返回任何回复内容';
+          }
+        } catch (err) {
+          appendError('网络错误：' + (err && err.message ? err.message : String(err)));
+        } finally {
+          setLoading(false);
+          inputEl.focus();
+        }
+      }
+
+      // ---------- Markdown support (auto-detect + safe render) ----------
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function looksLikeMarkdown(str) {
+        if (!str) return false;
+        var s = String(str);
+        if (/```/.test(s)) return true;
+        if (/`[^`]+`/.test(s)) return true; // inline code
+        if (/~~.+?~~/.test(s)) return true; // strikethrough
+        if (/(^|\n)#{1,6}\s+/.test(s)) return true; // headings
+        if (/(^|\n)\s*[-*+]\s+/.test(s)) return true; // unordered lists
+        if (/(^|\n)\s*\d+\.\s+/.test(s)) return true; // ordered lists
+        if (/(^|\n)>\s+/.test(s)) return true; // blockquote
+        if (/(\*\*|__)(.+?)\1/.test(s)) return true; // bold
+        if (/\[.+?\]\(.+?\)/.test(s)) return true; // links
+        if (/(^|\n)\s*[-*+]\s+\[(x| )\]\s+/.test(s)) return true; // task list
+        // table: header row + separator row (more reliable than only matching '|')
+        var lines = s.split(/\r?\n/);
+        for (var i = 0; i < lines.length - 1; i++) {
+          var a = lines[i].trim();
+          var b = lines[i + 1].trim();
+          if (a.indexOf('|') === -1) continue;
+          // separator row like: | --- | :---: | ---: |
+          if (!/^[|]?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(b)) continue;
+          return true;
+        }
+        if (/(^|\n)\s*(---|\*\*\*|___)\s*(\n|$)/.test(s)) return true; // hr
+        return false;
+      }
+
+      function applyInlineMarkdown(escapedLine) {
+        var s = escapedLine;
+
+        // inline code
+        s = s.replace(/`([^`]+)`/g, function (_, code) {
+          return '<code>' + code + '</code>';
+        });
+
+        // bold
+        s = s.replace(/(\*\*|__)(.+?)\1/g, function (_, _m, content) {
+          return '<strong>' + content + '</strong>';
+        });
+
+        // italic (best-effort)
+        s = s.replace(/(^|[^*])(\*|_)([^*_]+?)\2/g, function (_, prefix, _m, content) {
+          return prefix + '<em>' + content + '</em>';
+        });
+
+        // links: [text](url)
+        s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, text, url) {
+          var u = String(url).trim().toLowerCase();
+          if (u.indexOf('javascript:') === 0 || u.indexOf('data:') === 0) return text;
+          return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
+        });
+
+        return s;
+      }
+
+      function renderMarkdownLite(md) {
+        var raw = String(md == null ? '' : md).replace(/\r\n/g, '\n');
+        if (!looksLikeMarkdown(raw)) {
+          return escapeHtml(raw).replace(/\n/g, '<br/>');
+        }
+
+        // Extract fenced code blocks first
+        var codeBlocks = [];
+        var textWithTokens = raw.replace(/```(\w+)?\n([\s\S]*?)```/g, function (m, lang, code) {
+          var idx = codeBlocks.length;
+          codeBlocks.push({ lang: lang || '', code: code });
+          return '__CODEBLOCK_' + idx + '__';
+        });
+
+        // Escape remaining text so any HTML from backend becomes plain text
+        var escaped = escapeHtml(textWithTokens);
+        var lines = escaped.split('\n');
+
+        function splitTableRow(rowText) {
+          var row = rowText.trim();
+          // remove optional leading/trailing pipe
+          if (row.charAt(0) === '|') row = row.slice(1);
+          if (row.charAt(row.length - 1) === '|') row = row.slice(0, row.length - 1);
+          var parts = row.split('|').map(function (x) { return x.trim(); });
+          return parts;
+        }
+
+        function isTableSeparatorRow(rowText) {
+          // e.g. | --- | :---: | ---: |
+          var parts = splitTableRow(rowText);
+          if (parts.length < 2) return false;
+          for (var i = 0; i < parts.length; i++) {
+            var p = parts[i];
+            if (!/^:?-+:?$/.test(p)) return false;
+          }
+          return true;
+        }
+
+        function alignFromSeparatorCell(cellText) {
+          var t = cellText.trim();
+          var left = t.charAt(0) === ':';
+          var right = t.charAt(t.length - 1) === ':';
+          if (left && right) return 'center';
+          if (right) return 'right';
+          if (left) return 'left';
+          return '';
+        }
+
+        function tryRenderTableBlock(atIndex) {
+          if (atIndex + 1 >= lines.length) return null;
+          var headerLine = lines[atIndex].trim();
+          var sepLine = lines[atIndex + 1].trim();
+
+          if (!headerLine || headerLine.indexOf('|') === -1) return null;
+          if (!isTableSeparatorRow(sepLine)) return null;
+
+          var headerCells = splitTableRow(headerLine);
+          var sepCells = splitTableRow(sepLine);
+          var colCount = Math.min(headerCells.length, sepCells.length);
+          if (colCount < 2) return null;
+
+          var aligns = [];
+          for (var c = 0; c < colCount; c++) {
+            aligns.push(alignFromSeparatorCell(sepCells[c]));
+          }
+
+          var dataRows = [];
+          var next = atIndex + 2;
+          while (next < lines.length) {
+            var rowText = lines[next].trim();
+            if (!rowText) break;
+            if (rowText.indexOf('|') === -1) break;
+
+            // stop if we hit another block start
+            if (/^(#{1,6})\s+/.test(rowText)) break;
+            if (/^&gt;\s?/.test(rowText)) break;
+            if (/^([-*+])\s+/.test(rowText)) break;
+            if (/^\d+\.\s+/.test(rowText)) break;
+            if (/^__CODEBLOCK_\d+__$/.test(rowText)) break;
+
+            var cells = splitTableRow(rowText);
+            if (cells.length < 2) break;
+            // normalize to colCount
+            var normalized = [];
+            for (var k = 0; k < colCount; k++) normalized.push(cells[k] == null ? '' : cells[k]);
+            dataRows.push(normalized);
+            next++;
+          }
+
+          function tdHtml(cellText, tagName, colIdx) {
+            var inner = applyInlineMarkdown(cellText);
+            var align = aligns[colIdx] || '';
+            var alignAttr = align ? (' style="text-align:' + align + ';"') : '';
+            return '<' + tagName + alignAttr + '>' + inner + '</' + tagName + '>';
+          }
+
+          var ths = [];
+          for (var h = 0; h < colCount; h++) {
+            ths.push(tdHtml(headerCells[h] || '', 'th', h));
+          }
+
+          var trs = [];
+          for (var r = 0; r < dataRows.length; r++) {
+            var tds = [];
+            for (var d = 0; d < colCount; d++) {
+              tds.push(tdHtml(dataRows[r][d] || '', 'td', d));
+            }
+            trs.push('<tr>' + tds.join('') + '</tr>');
+          }
+
+          // consume lines: header + separator + data rows
+          i = next;
+          return '<table><thead><tr>' + ths.join('') + '</tr></thead><tbody>' + trs.join('') + '</tbody></table>';
+        }
+
+        function codeblockHtml(idx) {
+          var lang = codeBlocks[idx].lang;
+          var code = escapeHtml(codeBlocks[idx].code);
+          var cls = lang ? ' class="language-' + escapeHtml(lang) + '"' : '';
+          return '<pre><code' + cls + '>' + code + '</code></pre>';
+        }
+
+        var out = [];
+        var i = 0;
+        while (i < lines.length) {
+          var line = lines[i];
+          var trimmed = line.trim();
+
+          // Code block token as a standalone block
+          var tokenMatch = trimmed.match(/^__CODEBLOCK_(\d+)__$/);
+          if (tokenMatch) {
+            out.push(codeblockHtml(parseInt(tokenMatch[1], 10)));
+            i++;
+            continue;
+          }
+
+          // Table block
+          var tableHtml = tryRenderTableBlock(i);
+          if (tableHtml) {
+            out.push(tableHtml);
+            continue;
+          }
+
+          // Blank line
+          if (trimmed === '') {
+            i++;
+            continue;
+          }
+
+          // Headings: #..###### 
+          var headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+          if (headingMatch) {
+            var level = headingMatch[1].length;
+            out.push('<h' + level + '>' + applyInlineMarkdown(headingMatch[2]) + '</h' + level + '>');
+            i++;
+            continue;
+          }
+
+          // Blockquote: ^&gt;\s+
+          var quoteMatch = trimmed.match(/^&gt;\s?(.+)$/);
+          if (quoteMatch) {
+            out.push('<blockquote>' + applyInlineMarkdown(quoteMatch[1]) + '</blockquote>');
+            i++;
+            continue;
+          }
+
+          // Unordered list
+          var ulMatch = trimmed.match(/^([-*+])\s+(.+)$/);
+          if (ulMatch) {
+            var items = [];
+            while (i < lines.length) {
+              var t = lines[i].trim();
+              var m = t.match(/^([-*+])\s+(.+)$/);
+              if (!m) break;
+              items.push('<li>' + applyInlineMarkdown(m[2]) + '</li>');
+              i++;
+            }
+            out.push('<ul>' + items.join('') + '</ul>');
+            continue;
+          }
+
+          // Ordered list
+          var olMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+          if (olMatch) {
+            var oitems = [];
+            while (i < lines.length) {
+              var t2 = lines[i].trim();
+              var m2 = t2.match(/^(\d+)\.\s+(.+)$/);
+              if (!m2) break;
+              oitems.push('<li>' + applyInlineMarkdown(m2[2]) + '</li>');
+              i++;
+            }
+            out.push('<ol>' + oitems.join('') + '</ol>');
+            continue;
+          }
+
+          // Paragraph: consume until blank line or a new block start
+          var paraLines = [];
+          while (i < lines.length && lines[i].trim() !== '') {
+            var testTrim = lines[i].trim();
+            if (/^__CODEBLOCK_\d+__$/.test(testTrim)) break;
+            if (/^(#{1,6})\s+/.test(testTrim)) break;
+            if (/^&gt;\s?/.test(testTrim)) break;
+            if (/^([-*+])\s+/.test(testTrim)) break;
+            if (/^\d+\.\s+/.test(testTrim)) break;
+            paraLines.push(lines[i]);
+            i++;
+          }
+
+          // Join paragraph lines with <br/>
+          var paraEscJoined = paraLines.join('<br/>');
+          out.push('<p>' + applyInlineMarkdown(paraEscJoined) + '</p>');
+        }
+
+        return out.join('');
+      }
+      
+      // 使用更完整的 marked（如可用）渲染；否则回退到 lite 版本
+      function renderMarkdown(md) {
+        var raw = String(md == null ? '' : md).replace(/\r\n/g, '\n');
+        if (!looksLikeMarkdown(raw)) {
+          return escapeHtml(raw).replace(/\n/g, '<br/>');
+        }
+
+        if (typeof marked === 'function') {
+          // gfm: 表格/任务列表/删除线等（取决于输入），breaks: 强制换行渲染
+          var html = marked.parse(raw, { gfm: true, breaks: true, headerIds: false, mangle: false });
+          if (typeof DOMPurify !== 'undefined' && DOMPurify && typeof DOMPurify.sanitize === 'function') {
+            return DOMPurify.sanitize(html);
+          }
+          // Safety fallback: when marked is available but DOMPurify isn't, use lite renderer
+          return renderMarkdownLite(raw);
+        }
+
+        return renderMarkdownLite(raw);
+      }
+      // ---------- /Markdown support ----------
+
+      sendBtn.addEventListener('click', sendChat);
+      inputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendChat();
+        }
+      });
+
+      appendMessage('', '会话 id：' + sessionId + '（随每次刷新页面更新）', 'meta');
+    })();
+  </script>
+</body>
+</html>
