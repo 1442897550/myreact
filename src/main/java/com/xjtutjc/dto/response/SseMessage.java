@@ -1,13 +1,21 @@
 package com.xjtutjc.dto.response;
 
+import com.alibaba.fastjson.JSON;
 import lombok.Getter;
 import lombok.Setter;
 
 @Setter
 @Getter
 public class SseMessage {
-    private String type;  // content: 内容块, error: 错误, done: 完成
+    private String type;  // content: 内容块，error: 错误，done: 完成
     private String data;
+
+    public SseMessage() {}
+
+    public SseMessage(String type, String data) {
+        this.type = type;
+        this.data = data;
+    }
 
     public static SseMessage content(String data) {
         SseMessage message = new SseMessage();
@@ -28,5 +36,10 @@ public class SseMessage {
         message.setType("done");
         message.setData(null);
         return message;
+    }
+
+    @Override
+    public String toString() {
+        return JSON.toJSONString(this);
     }
 }
