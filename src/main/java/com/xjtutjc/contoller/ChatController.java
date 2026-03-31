@@ -16,6 +16,7 @@ import io.reactivex.Flowable;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,7 +41,8 @@ public class ChatController {
      * 访问聊天页面
      */
     @GetMapping("/chat")
-    public String chatPage() {
+    public String chatPage(Model model) {
+        model.addAttribute("timestamp", System.currentTimeMillis());
         return "chat";
     }
 
