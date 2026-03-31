@@ -4,30 +4,22 @@ import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.Role;
-import com.alibaba.dashscope.tools.ToolCallBase;
-import com.alibaba.dashscope.tools.ToolCallFunction;
 import com.alibaba.fastjson.JSON;
 import com.xjtutjc.context.ChatContext;
 import com.xjtutjc.dto.request.ChatRequsetDTO;
-import com.xjtutjc.dto.response.ApiResponse;
-import com.xjtutjc.dto.response.ChatResponseDTO;
 import com.xjtutjc.dto.response.SseMessage;
 import com.xjtutjc.model.ChatModel;
-import com.xjtutjc.tool.WeatherTool;
+import com.xjtutjc.service.ChatService;
+import com.xjtutjc.service.ToolCallService;
+import com.xjtutjc.tools.WeatherTool;
 import io.reactivex.Flowable;
-import io.reactivex.Maybe;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.MediaType;
 
-import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,6 +32,11 @@ public class ChatController {
     private ChatModel chatModel;
     @Resource
     private WeatherTool weatherTool;
+    @Resource
+    private ToolCallService toolCallService;
+
+    @Resource
+    private ChatService chatService;
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -95,35 +92,14 @@ public class ChatController {
                 }
                 return;
             }
-            //拿到第一个返回
+            //进行工具调用
+            Flowable<GenerationResult> afterToolResult = chatService.recurToolCallStream(generationResultFlowable, chatContext);
 
-            Maybe<GenerationResult> generationResultMaybe = generationResultFlowable.firstElement();
-            GenerationResult generationResult = generationResultMaybe.blockingGet();
-            GenerationOutput.Choice firstChoice = generationResult.getOutput().getChoices().get(0);
-            Message firstMessage = firstChoice.getMessage();
-            while (!CollectionUtils.isEmpty(firstMessage.getToolCalls())){
-                ToolCallBase toolCall = firstMessage.getToolCalls().get(0);
-                ToolCallFunction functionCall = (ToolCallFunction) toolCall;
-                String funcName = functionCall.getFunction().getName();
-                String arguments = functionCall.getFunction().getArguments();
-                System.out.println("正在调用工具 [" + funcName + "]，参数：" + arguments);
-                String weather = weatherTool.getWeather(arguments);
-                Message toolMessage = Message.builder()
-                        .role("tool")
-                        .toolCallId(toolCall.getId())
-                        .content(weather)
-                        .build();
-                System.out.println("工具返回：" + toolMessage.getContent());
-                chatContext.getMessages().add(toolMessage);
-                generationResultFlowable = chatModel.streamChat(chatContext);
-            }
-            generationResultFlowable.subscribe(message -> {
+            afterToolResult.subscribe(message -> {
                 GenerationOutput.Choice choice = message.getOutput().getChoices().get(0);
                 Message realMessage = choice.getMessage();
                 String content = realMessage.getContent();
                 String finishReason = choice.getFinishReason();
-                // 实时发送到前端
-
                 if (content != null && !content.isEmpty()){
                     fullAnswerBuilder.append(content);
                     try {

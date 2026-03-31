@@ -1,7 +1,6 @@
 package com.xjtutjc.model;
 
 import com.alibaba.dashscope.aigc.generation.Generation;
-import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.common.Message;
@@ -11,14 +10,13 @@ import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.fastjson.JSON;
 import com.xjtutjc.config.ModelConfig;
 import com.xjtutjc.context.ChatContext;
-import com.xjtutjc.tool.WeatherTool;
+import com.xjtutjc.tools.WeatherTool;
 import io.reactivex.Flowable;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Service
 @Slf4j
