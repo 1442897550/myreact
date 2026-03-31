@@ -1,5 +1,6 @@
 package com.xjtutjc.tools;
 
+import com.alibaba.dashscope.tools.ToolBase;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -30,5 +32,9 @@ public class LocalToolFactory {
             throw new RuntimeException("未定义的toolname"+toolName);
         }
         return localTool;
+    }
+
+    public List<ToolBase> getToolBaseList(){
+        return toolMap.values().stream().map(tool -> (ToolBase)tool.getToolFunction()).toList();
     }
 }

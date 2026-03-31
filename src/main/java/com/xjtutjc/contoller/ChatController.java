@@ -30,10 +30,6 @@ public class ChatController {
     
     @Resource
     private ChatModel chatModel;
-    @Resource
-    private WeatherTool weatherTool;
-    @Resource
-    private ToolCallService toolCallService;
 
     @Resource
     private ChatService chatService;

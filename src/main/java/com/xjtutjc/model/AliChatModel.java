@@ -10,6 +10,8 @@ import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.fastjson.JSON;
 import com.xjtutjc.config.ModelConfig;
 import com.xjtutjc.context.ChatContext;
+import com.xjtutjc.tools.CurrentTimeTool;
+import com.xjtutjc.tools.LocalToolFactory;
 import com.xjtutjc.tools.WeatherTool;
 import io.reactivex.Flowable;
 import jakarta.annotation.Resource;
@@ -24,9 +26,9 @@ public class AliChatModel implements ChatModel{
     @Resource
     private ModelConfig modelConfig;
     @Resource
-    private WeatherTool weatherTool;
+    private LocalToolFactory localToolFactory;
     private Message systemMsg = Message.builder().role(Role.SYSTEM.getValue())
-            .content("你是一个架构师，当用户向你提问时，你需要根据架构师的思路去思考用户的问题并回答，要把回答中的引用文献标注出来可跳转的地址。").build();
+            .content("你是一个架构师，当用户向你提问时，你需要根据架构师的思路去思考用户的问题并回答，要把回答中的引用文献标注出来可跳转的地址").build();
     @Override
     public Flowable<GenerationResult> streamChat(ChatContext context) {
         Generation gen = new Generation();
@@ -35,7 +37,7 @@ public class AliChatModel implements ChatModel{
                 .model("qwen-plus")
                 .messages(context.getMessages())
                 .incrementalOutput(true)
-                .tools(Arrays.asList(weatherTool.getToolFunction()))
+                .tools(localToolFactory.getToolBaseList())
                 .resultFormat(GenerationParam.ResultFormat.MESSAGE)
                 .build();
         try {
