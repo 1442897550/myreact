@@ -3,25 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能对话 - 调试版</title>
+    <title>智能助手 - SOP 提交与对话</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <link rel="stylesheet" th:href="@{/css/chat.css(t=${timestamp})}">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 智能对话助手</h1>
-        </div>
-
-        <div id="chatBox" class="chat-box">
-            <div class="message system">
-                <div class="message-content">欢迎使用智能对话！请输入您的问题...</div>
+    <div class="main-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>📑 功能菜单</h2>
             </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="chat">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-label">智能对话</span>
+                </a>
+                <a href="#" class="nav-item" data-page="sop">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-label">SOP 提交</span>
+                </a>
+                <a href="#" class="nav-item" data-page="search">
+                    <span class="nav-icon">🔍</span>
+                    <span class="nav-label">相似 SOP 查询</span>
+                </a>
+                <a href="#" class="nav-item" data-page="upload">
+                    <span class="nav-icon">📤</span>
+                    <span class="nav-label">文件上传</span>
+                </a>
+            </nav>
         </div>
 
-        <div class="input-area">
-            <textarea id="userInput" placeholder="输入您的问题，按 Enter 发送（Shift+Enter 换行）" rows="2"></textarea>
-            <button id="sendBtn">发送</button>
+        <!-- 主内容区 -->
+        <div class="content-wrapper">
+            <!-- 聊天页面 -->
+            <div id="chatPage" class="page active">
+                <div class="container">
+                    <div class="header">
+                        <h1>🤖 智能对话助手</h1>
+                    </div>
+
+                    <div id="chatBox" class="chat-box">
+                        <div class="message system">
+                            <div class="message-content">欢迎使用智能对话！请输入您的问题...</div>
+                        </div>
+                    </div>
+
+                    <div class="input-area">
+                        <textarea id="userInput" placeholder="输入您的问题，按 Enter 发送（Shift+Enter 换行）" rows="2"></textarea>
+                        <button id="sendBtn">发送</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOP 提交页面 -->
+            <div id="sopPage" class="page">
+                <div class="container">
+                    <div class="header">
+                        <h1>📄 SOP 提交</h1>
+                    </div>
+
+                    <div class="sop-form-container">
+                        <form id="sopForm" class="sop-form">
+                            <div class="form-group">
+                                <label for="sopUserName">用户名</label>
+                                <input type="text" id="sopUserName" value="system" placeholder="请输入用户名">
+                            </div>
+                            <div class="form-group">
+                                <label for="sopContent">SOP 内容</label>
+                                <textarea id="sopContent" rows="10" placeholder="请输入 SOP 内容..."></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" id="sopSubmitBtn" class="submit-btn">提交 SOP</button>
+                            </div>
+                        </form>
+                        <div id="sopResult" class="sop-result"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOP 搜索页面 -->
+            <div id="searchPage" class="page">
+                <div class="container">
+                    <div class="header">
+                        <h1>🔍 相似 SOP 查询</h1>
+                    </div>
+
+                    <div class="sop-search-container">
+                        <form id="sopSearchForm" class="sop-search-form">
+                            <div class="form-group">
+                                <label for="searchContent">搜索内容</label>
+                                <textarea id="searchContent" rows="5" placeholder="请输入要搜索的内容，系统将查找相似的 SOP..."></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" id="sopSearchBtn" class="submit-btn">搜索</button>
+                            </div>
+                        </form>
+                        <div id="searchResult" class="search-result"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文件上传页面 -->
+            <div id="uploadPage" class="page">
+                <div class="container">
+                    <div class="header">
+                        <h1>📤 文件上传</h1>
+                    </div>
+
+                    <div class="upload-container">
+                        <form id="uploadForm" class="upload-form">
+                            <div class="form-group">
+                                <label for="uploadFile">选择文件</label>
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="uploadFile" name="file" accept=".txt,.md,.pdf,.doc,.docx,.java,.py,.js,.ts,.html,.css,.json,.xml,.yml,.yaml">
+                                    <div class="file-drop-zone" id="fileDropZone">
+                                        <span class="drop-icon">📁</span>
+                                        <span class="drop-text">点击选择文件或拖拽文件到此处</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="upload-progress-container" id="uploadProgressContainer" style="display: none;">
+                                <div class="progress-info">
+                                    <span id="progressStatus">上传中...</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                                <div class="progress-detail" id="progressDetail"></div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" id="uploadBtn" class="submit-btn">上传并处理</button>
+                            </div>
+                        </form>
+                        <div id="uploadResult" class="upload-result"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
