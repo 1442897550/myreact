@@ -179,6 +179,7 @@ let isSending = false;
 let renderTimer = null;
 let pendingContent = '';
 let currentMsgDiv = null;
+let sessionId = null;  // 会话 ID，在页面加载时生成一次
 
 // DOM 元素
 let chatBox, userInput, sendBtn, debugToggle, debugLog;
@@ -190,6 +191,10 @@ function initDOM() {
     sendBtn = document.getElementById('sendBtn');
     debugToggle = document.getElementById('debugToggle');
     debugLog = document.getElementById('debugLog');
+
+    // 生成会话 ID（仅在页面加载时生成一次）
+    sessionId = generateSessionId();
+    Debug.info('生成会话 ID', { sessionId: sessionId });
 
     // 绑定发送按钮点击事件
     sendBtn.addEventListener('click', sendChat);
@@ -251,7 +256,19 @@ function scheduleRender(content) {
     renderTimer = setTimeout(function() {
         updateAssistantMessage(pendingContent);
         renderTimer = null;
-    }, 50); // 50ms 防抖
+    }, 30); // 30ms 防抖
+}
+
+// 立即渲染，不等待防抖
+function flushRender() {
+    if (renderTimer) {
+        clearTimeout(renderTimer);
+        renderTimer = null;
+    }
+    if (pendingContent) {
+        updateAssistantMessage(pendingContent);
+        pendingContent = '';
+    }
 }
 
 // 发送聊天请求
@@ -283,7 +300,7 @@ function sendChat() {
     fetchWithStream(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: generateSessionId(), question: question })
+        body: JSON.stringify({ id: sessionId, question: question })
     });
 }
 
@@ -370,7 +387,21 @@ async function fetchWithStream(url, options) {
                             Debug.error('收到错误消息', payload);
                             updateAssistantMessage('❌ 错误：' + payload.data);
                         } else if (payload.type === 'done') {
-                            Debug.success('收到完成信号');
+                            Debug.success('收到完成信号，准备退出流读取');
+                            // 处理剩余缓冲
+                            if (buffer.trim() && buffer.startsWith('data:')) {
+                                const dataStr = buffer.slice(5).trim();
+                                try {
+                                    const payload = JSON.parse(dataStr);
+                                    if (payload.type === 'content' && payload.data) {
+                                        accumulatedContent += payload.data;
+                                    }
+                                } catch (e) {
+                                    accumulatedContent += dataStr;
+                                }
+                            }
+                            flushRender();
+                            break;  // 收到完成信号后立即退出，无需等待流关闭
                         }
                     } catch (e) {
                         Debug.warn('JSON 解析失败', { error: e.message, data: dataStr });
@@ -381,7 +412,7 @@ async function fetchWithStream(url, options) {
             }
         }
 
-        // 处理剩余缓冲
+        // 如果是因为 done=false 退出（没有收到 done 信号），处理剩余缓冲
         if (buffer.trim() && buffer.startsWith('data:')) {
             const dataStr = buffer.slice(5).trim();
             try {
@@ -392,14 +423,7 @@ async function fetchWithStream(url, options) {
             } catch (e) {
                 accumulatedContent += dataStr;
             }
-            scheduleRender(accumulatedContent);
-        }
-
-        // 确保最后一次渲染完成
-        if (renderTimer) {
-            clearTimeout(renderTimer);
-            updateAssistantMessage(accumulatedContent);
-            renderTimer = null;
+            flushRender();
         }
 
         Debug.success('请求处理完成', {
