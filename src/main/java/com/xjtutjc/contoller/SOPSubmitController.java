@@ -4,6 +4,7 @@ import com.xjtutjc.dto.request.SopSearchRequestDTO;
 import com.xjtutjc.dto.request.SopSubmitRequestDTO;
 import com.xjtutjc.dto.response.*;
 import com.xjtutjc.model.EmbeddingModel;
+import com.xjtutjc.service.ContextService;
 import com.xjtutjc.service.FileIndexService;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -41,6 +42,7 @@ public class SOPSubmitController {
     private EmbeddingModel embeddingModel;
     @Resource
     private FileIndexService fileIndexService;
+
     @PostMapping("/api/sop/submit")
     public ResponseEntity<?> submitSop(@RequestBody SopSubmitRequestDTO requestDTO){
         if(Objects.isNull(requestDTO) || StringUtils.isEmpty(requestDTO.getUserName()) || StringUtils.isEmpty(requestDTO.getContent())){
@@ -67,7 +69,7 @@ public class SOPSubmitController {
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
                 .maxResults(3)
-                .minScore(0.65)
+                .minScore(0.75)
                 .build();
         EmbeddingSearchResult<TextSegment> search = embeddingStore.search(searchRequest);
         SopSearchResponseDTO searchResponseDTO = new SopSearchResponseDTO();

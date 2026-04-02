@@ -1,6 +1,7 @@
 package com.xjtutjc.context;
 
 import com.alibaba.dashscope.tools.ToolCallBase;
+import com.alibaba.dashscope.tools.ToolCallFunction;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,5 +15,5 @@ public class ToolCallContext {
     private String args;
     private int index;
     private String id;
-    private List<ToolCallBase> toolCallBaseList = new ArrayList<>();
+    private ToolCallFunction toolCallFunction;
 }

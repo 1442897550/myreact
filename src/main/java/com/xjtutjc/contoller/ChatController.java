@@ -10,6 +10,7 @@ import com.xjtutjc.dto.request.ChatRequsetDTO;
 import com.xjtutjc.dto.response.SseMessage;
 import com.xjtutjc.model.ChatModel;
 import com.xjtutjc.service.ChatService;
+import com.xjtutjc.service.ContextService;
 import com.xjtutjc.service.ToolCallService;
 import com.xjtutjc.tools.WeatherTool;
 import io.reactivex.Flowable;
@@ -36,6 +37,9 @@ public class ChatController {
     private ChatService chatService;
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
+
+    @Resource
+    private ContextService contextService;
 
     /**
      * 访问聊天页面
@@ -74,12 +78,7 @@ public class ChatController {
         executor.execute(() -> {
             // 用于累积完整答案
             StringBuilder fullAnswerBuilder = new StringBuilder();
-            Message userMessage = Message.builder().content(chatRequsetDTO.getQuestion()).role(Role.USER.getValue()).build();
-            ChatContext chatContext = new ChatContext();
-            chatContext.getMessages().add(userMessage);
-            Message systemMessage = Message.builder().role(Role.SYSTEM.getValue())
-                    .content("你是一个架构师，当用户向你提问时，你需要根据架构师的思路去思考用户的问题并回答，要把回答中的引用文献标注出来可跳转的地址。").build();
-            chatContext.getMessages().add(systemMessage);
+            ChatContext chatContext = contextService.buildContext(chatRequsetDTO.getQuestion());
             Flowable<GenerationResult> generationResultFlowable = chatModel.streamChat(chatContext);
             if(Objects.isNull(generationResultFlowable)){
                 try {
@@ -98,6 +97,7 @@ public class ChatController {
                 Message realMessage = choice.getMessage();
                 String content = realMessage.getContent();
                 String finishReason = choice.getFinishReason();
+                chatService.recurToolCallStream(generationResultFlowable, chatContext);
                 if (content != null && !content.isEmpty()){
                     fullAnswerBuilder.append(content);
                     try {

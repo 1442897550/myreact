@@ -190,6 +190,17 @@ function initDOM() {
     sendBtn = document.getElementById('sendBtn');
     debugToggle = document.getElementById('debugToggle');
     debugLog = document.getElementById('debugLog');
+
+    // 绑定发送按钮点击事件
+    sendBtn.addEventListener('click', sendChat);
+
+    // 绑定输入框键盘事件（Enter 发送）
+    userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChat();
+        }
+    });
 }
 
 // 切换调试面板
