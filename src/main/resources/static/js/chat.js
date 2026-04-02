@@ -314,6 +314,7 @@ async function fetchWithStream(url, options) {
     let firstChunkTime = null;
     let lastChunkTime = null;
     let buffer = '';
+    let receivedDone = false;  // 标记是否收到 done 信号（移到 try 块外）
 
     try {
         Debug.info('发起 fetch 请求');
@@ -388,6 +389,12 @@ async function fetchWithStream(url, options) {
                             updateAssistantMessage('❌ 错误：' + payload.data);
                         } else if (payload.type === 'done') {
                             Debug.success('收到完成信号，准备退出流读取');
+                            receivedDone = true;
+                            // 先恢复输入状态，再异步处理最后的渲染
+                            isSending = false;
+                            sendBtn.disabled = false;
+                            userInput.disabled = false;
+                            
                             // 处理剩余缓冲
                             if (buffer.trim() && buffer.startsWith('data:')) {
                                 const dataStr = buffer.slice(5).trim();
@@ -400,8 +407,18 @@ async function fetchWithStream(url, options) {
                                     accumulatedContent += dataStr;
                                 }
                             }
-                            flushRender();
-                            break;  // 收到完成信号后立即退出，无需等待流关闭
+                            
+                            // 异步渲染，避免阻塞 UI
+                            setTimeout(function() {
+                                flushRender();
+                                userInput.focus();
+                                // 渲染完成后清空引用
+                                pendingContent = '';
+                                currentMsgDiv = null;
+                            }, 0);
+                            
+                            Debug.info('已恢复输入状态');
+                            break;  // 跳出 for 循环
                         }
                     } catch (e) {
                         Debug.warn('JSON 解析失败', { error: e.message, data: dataStr });
@@ -410,10 +427,16 @@ async function fetchWithStream(url, options) {
                     }
                 }
             }
+
+            // 如果收到 done 信号，退出 while 循环
+            if (receivedDone) {
+                Debug.info('已收到 done 信号，退出流读取循环');
+                break;
+            }
         }
 
-        // 如果是因为 done=false 退出（没有收到 done 信号），处理剩余缓冲
-        if (buffer.trim() && buffer.startsWith('data:')) {
+        // 如果没有收到 done 信号（比如流意外中断），处理剩余缓冲
+        if (!receivedDone && buffer.trim() && buffer.startsWith('data:')) {
             const dataStr = buffer.slice(5).trim();
             try {
                 const payload = JSON.parse(dataStr);
@@ -439,13 +462,22 @@ async function fetchWithStream(url, options) {
     } catch (error) {
         Debug.error('请求失败', { message: error.message });
         updateAssistantMessage('❌ 请求失败：' + error.message);
-    } finally {
         isSending = false;
         sendBtn.disabled = false;
         userInput.disabled = false;
         userInput.focus();
-        pendingContent = '';
-        currentMsgDiv = null;
+    } finally {
+        // 如果是正常完成（收到 done 信号），状态已经在之前恢复
+        // 变量也会在异步渲染完成后清空
+        // 这里只处理异常情况或没有收到 done 信号的情况
+        if (!receivedDone) {
+            isSending = false;
+            sendBtn.disabled = false;
+            userInput.disabled = false;
+            userInput.focus();
+            pendingContent = '';
+            currentMsgDiv = null;
+        }
     }
 }
 
