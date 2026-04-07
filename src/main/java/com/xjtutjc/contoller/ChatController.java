@@ -113,7 +113,6 @@ public class ChatController {
                 Message realMessage = choice.getMessage();
                 String content = realMessage.getContent();
                 String finishReason = choice.getFinishReason();
-                chatService.recurToolCallStream(generationResultFlowable, chatContext);
                 if (content != null && !content.isEmpty()){
                     fullAnswerBuilder.append(content);
                     try {

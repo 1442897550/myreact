@@ -390,10 +390,6 @@ async function fetchWithStream(url, options) {
                         } else if (payload.type === 'done') {
                             Debug.success('收到完成信号，准备退出流读取');
                             receivedDone = true;
-                            // 先恢复输入状态，再异步处理最后的渲染
-                            isSending = false;
-                            sendBtn.disabled = false;
-                            userInput.disabled = false;
                             
                             // 处理剩余缓冲
                             if (buffer.trim() && buffer.startsWith('data:')) {
@@ -408,15 +404,22 @@ async function fetchWithStream(url, options) {
                                 }
                             }
                             
-                            // 异步渲染，避免阻塞 UI
-                            setTimeout(function() {
-                                flushRender();
+                            // 立即同步渲染最后的内容，避免延迟
+                            flushRender();
+                            
+                            // 立即恢复输入状态
+                            isSending = false;
+                            sendBtn.disabled = false;
+                            userInput.disabled = false;
+                            
+                            // 使用 requestAnimationFrame 确保在下一帧聚焦，避免阻塞渲染
+                            requestAnimationFrame(function() {
                                 userInput.focus();
                                 // 渲染完成后清空引用
                                 pendingContent = '';
                                 currentMsgDiv = null;
-                            }, 0);
-                            
+                            });
+
                             Debug.info('已恢复输入状态');
                             break;  // 跳出 for 循环
                         }
@@ -434,6 +437,9 @@ async function fetchWithStream(url, options) {
                 break;
             }
         }
+
+        // 释放 reader 锁
+        reader.releaseLock();
 
         // 如果没有收到 done 信号（比如流意外中断），处理剩余缓冲
         if (!receivedDone && buffer.trim() && buffer.startsWith('data:')) {
