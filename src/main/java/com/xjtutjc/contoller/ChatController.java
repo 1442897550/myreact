@@ -130,6 +130,20 @@ public class ChatController {
                     System.out.println("总 Tokens：" + message.getUsage().getTotalTokens());
                 }
 
+                if (finishReason != null && "stop".equals(finishReason)) {
+                    System.out.println("完整对话内容：" + fullAnswerBuilder.toString());
+                    // 更新会话历史
+                    session.addMessage(chatRequsetDTO.getQuestion(), fullAnswerBuilder.toString());
+                    log.info("已更新会话历史 - SessionId: {}, 当前消息对数: {}",
+                            chatRequsetDTO.getId(), session.getMessagePairCount());
+                    try {
+                        emitter.send(SseMessage.done());
+                        emitter.complete();
+                    } catch (Exception e) {
+                        log.error("发送完成消息失败", e);
+                    }
+                }
+
             }, error -> {
                 log.error("流式对话报错，error : {}", JSON.toJSONString(error));
                 try {
@@ -139,17 +153,6 @@ public class ChatController {
                     emitter.completeWithError(e);
                 }
             }, () -> {
-                System.out.println("完整对话内容：" + fullAnswerBuilder.toString());
-                // 更新会话历史
-                session.addMessage(chatRequsetDTO.getQuestion(), fullAnswerBuilder.toString());
-                log.info("已更新会话历史 - SessionId: {}, 当前消息对数: {}",
-                        chatRequsetDTO.getId(), session.getMessagePairCount());
-                try {
-                    emitter.send(SseMessage.done());
-                    emitter.complete();
-                } catch (Exception e) {
-                    log.error("发送完成消息失败", e);
-                }
             });
         });
         return emitter;

@@ -4,6 +4,8 @@ import com.alibaba.dashscope.tools.ToolBase;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,9 @@ import java.util.Objects;
 @Slf4j
 public class LocalToolFactory {
     private static Map<String, LocalTool> toolMap = new HashMap<>();
+    private static Map<String, ToolCallback> toolCallbackMap = new HashMap<>();
+    @Resource
+    private ToolCallbackProvider toolCallbackProvider;
     @Resource
     private ApplicationContext applicationContext;
     @PostConstruct
@@ -23,6 +28,10 @@ public class LocalToolFactory {
         Map<String, LocalTool> beansOfType = applicationContext.getBeansOfType(LocalTool.class);
         for (String s : beansOfType.keySet()) {
             toolMap.put(beansOfType.get(s).getToolName(),beansOfType.get(s));
+        }
+        ToolCallback[] toolCallbacks = toolCallbackProvider.getToolCallbacks();
+        for (ToolCallback toolCallback : toolCallbacks) {
+            toolCallbackMap.put(toolCallback.getToolDefinition().name(),toolCallback);
         }
     }
     public LocalTool getTool(String toolName){
@@ -32,6 +41,11 @@ public class LocalToolFactory {
             throw new RuntimeException("未定义的toolname"+toolName);
         }
         return localTool;
+    }
+
+    public ToolCallback getToolCallBack(String toolName){
+        ToolCallback toolCallback = toolCallbackMap.get(toolName);
+        return toolCallback;
     }
 
     public List<ToolBase> getToolBaseList(){

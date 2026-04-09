@@ -1,0 +1,11 @@
+spring:
+  ai:
+    mcp:
+      client:
+        sse:
+          connections:
+            mymcpclient:
+              url: http://localhost:8081
+              sse-endpoint: /sse
+        type: sync
+

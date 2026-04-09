@@ -6,6 +6,7 @@ import com.xjtutjc.tools.LocalTool;
 import com.xjtutjc.tools.LocalToolFactory;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Service;
 
 
@@ -16,8 +17,8 @@ public class ToolCallService {
     private LocalToolFactory localToolFactory;
     public String getResult(ToolCallContext context){
         try {
-            LocalTool tool = localToolFactory.getTool(context.getName());
-            return tool.getToolResult(context.getArgs());
+            ToolCallback toolCallBack = localToolFactory.getToolCallBack(context.getName());
+            return toolCallBack.call(context.getArgs());
 
         }catch (Exception e){
             log.error("调用tool失败,e = {}", JSON.toJSON(e));
